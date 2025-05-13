@@ -1,28 +1,20 @@
-%if 0%{?fedora} || 0%{?rhel} > 7
-%global with_python3 1
-%endif
-
-%if 0%{?fedora} < 32 && 0%{?rhel} < 9
-%global with_python2 1
-%endif
+%bcond docs %{undefined rhel}
 
 Name:           python-netaddr
-Version:        0.8.0
-Release:        5%{?dist}
+Version:        0.10.1
+Release:        3%{?dist}
 Summary:        A pure Python network address representation and manipulation library
 
 License:        BSD
 URL:            http://github.com/drkjam/netaddr
 Source0:        https://pypi.python.org/packages/source/n/netaddr/netaddr-%{version}.tar.gz
+# Remove once https://github.com/netaddr/netaddr/pull/345
+Source1:    THANKS
 
 BuildArch:      noarch
-# sphinx is python3-only f31 onward
-# https://fedoraproject.org/wiki/Changes/Sphinx2
+%if %{with docs}
 BuildRequires:  python3-sphinx
-%if 0%{?with_python2}
-BuildRequires:  python2-pytest
-BuildRequires:  python2-devel
-BuildRequires:  python2-setuptools
+BuildRequires:  python3-furo
 %endif
 
 %global desc A network address manipulation library for Python\
@@ -53,29 +45,17 @@ Layer 2 addresses\
 
 %description %_description
 
-%if 0%{?with_python2}
-%package -n python2-netaddr
-Summary: %summary
-%{?python_provide:%python_provide python2-netaddr}
-
-%description -n python2-netaddr %_description
-%endif
-
-%if 0%{?with_python3}
 %package -n python3-netaddr
 Summary: A pure Python network address representation and manipulation library
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
-BuildRequires:  python3-sphinx
 BuildRequires:  python3-pytest
-%{?python_provide:%python_provide python3-netaddr}
 
 %description -n python3-netaddr
 %{desc}
-%endif
 
 %prep
-%setup -q -n netaddr-%{version}
+%autosetup -n netaddr-%{version} -p1
 
 # Make rpmlint happy, rip out python shebang lines from most python
 # modules
@@ -86,61 +66,47 @@ find netaddr -name "*.py" | \
 chmod 0644 README.rst AUTHORS CHANGELOG COPYRIGHT LICENSE PKG-INFO
 
 %build
-%if 0%{?with_python2}
-%py2_build
-%endif
-
-%if 0%{?with_python3}
 %py3_build
-%endif
 
 #docs
+%if %{with docs}
 pushd docs
 PYTHONPATH='../' sphinx-build-%{python3_version} -b html -d build/doctrees source html
-rm -f html/.buildinfo
-%if 0%{?with_python3}
-PYTHONPATH='../' sphinx-build-%{python3_version} -b html -d build/doctrees source python3/html
 rm -f python3/html/.buildinfo
-%endif
 popd
+%endif
 
 
 %install
-%if 0%{?with_python2}
-%py2_install
-%endif
-
-%if 0%{?with_python3}
 %py3_install
-%endif
 
 
 %check
-%if 0%{?with_python2}
-py.test-%{python2_version}
-%endif
-%if 0%{?with_python3}
 py.test-%{python3_version}
-%endif
 
-%if 0%{?with_python2}
-%files -n python2-netaddr
-%license COPYRIGHT LICENSE
-%doc AUTHORS CHANGELOG
-%doc README.rst docs/html
-%{python2_sitelib}/*
-%endif
-
-%if 0%{?with_python3}
 %files -n python3-netaddr
 %license COPYRIGHT
-%doc AUTHORS CHANGELOG
-%doc README.rst docs/python3/html
-%{python3_sitelib}/*
-%{_bindir}/netaddr
+%doc AUTHORS CHANGELOG README.rst
+%if %{with docs}
+%doc docs/python3/html
 %endif
+%{python3_sitelib}/*
+
+ %{_bindir}/netaddr
 
 %changelog
+* Wed Nov 13 2024 Rafael Jeffman <rjeffman@redhat.com> - 0.10.1-3
+- Bump version to rebuild due to brew issues
+  Resolves: RHEL-25506
+
+* Tue Nov 12 2024 Rafael Jeffman <rjeffman@redhat.com> - 0.10.1-2
+- Remove subpackage python3-netaddr-shell
+  Resolves: RHEL-25506
+
+* Mon Nov 11 2024 Rafael Jeffman <rjeffman@redhat.com> - 0.10.1-1
+- Rebase to version 0.10.1
+  Resolves: RHEL-25506
+
 * Tue Aug 10 2021 Mohan Boddu <mboddu@redhat.com> - 0.8.0-5
 - Rebuilt for IMA sigs, glibc 2.34, aarch64 flags
   Related: rhbz#1991688
